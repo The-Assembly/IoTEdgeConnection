@@ -1,0 +1,141 @@
+
+config.json -> etc
+----------
+{
+	"ws_servers":	[{
+			"host":	"pp-2011231253ka.devportal.ptc.io",
+			"port":	443
+		}],
+	"appkey":	"DP:AQABABhvWGgLCuyp00s+1APyL+oPgu2W593+0vqQEe4ruPLmOiOA5N+aRYRxXKYKvcRHIfQO9EfCRGoOoYgiM+rOUf+1Mi2kGbuHkILSsrI",
+	"logger":	{
+		"level":	"INFO",
+		"publish_directory":	"C:\\EMS\\logs",
+		"publish_level":	"INFO",
+		"max_file_storage":	2000000,
+		"auto_flush":	true
+	},
+	"http_server":	{
+		"ssl":	false,
+		"authenticate":	false
+	},
+	"ws_connection":	{
+		"encryption":	"ssl"
+	},
+	"certificates":	{
+		"validate":	false,
+		"disable_hostname_validation":	true
+	},	
+	"file":	{
+		"buffer_size":	8192,
+		"max_file_size":	8000000000,
+		"virtual_dirs":	[{
+				"other":	"C:\\EMS\\other"
+			}],
+		"staging_dir":	"C:\\EMS\\staging"
+	}
+}
+
+
+config.lua -> etc
+---------- 
+scripts.script_resource_ssl = false
+scripts.script_resource_authenticate = false
+
+scripts.EdgeThing = {
+         file = "thing.lua",
+         template = "YourEdgeThingTemplate",
+         scanRate = 10000
+}
+
+YourEdgeThingTemplate.lua
+-----------
+properties.failure = {baseType="NUMBER", pushType = "ALWAYS", value=0}
+
+properties.s1_fb1 = {baseType="NUMBER", pushType = "ALWAYS", value=0}
+properties.s1_fb2 = {baseType="NUMBER", pushType = "ALWAYS", value=0}
+properties.s1_fb3 = {baseType="NUMBER", pushType = "ALWAYS", value=0}
+properties.s1_fb4 = {baseType="NUMBER", pushType = "ALWAYS", value=0}
+properties.s1_fb5 = {baseType="NUMBER", pushType = "ALWAYS", value=0}
+
+properties.s2_fb1 = {baseType="NUMBER", pushType = "ALWAYS", value=0}
+properties.s2_fb2 = {baseType="NUMBER", pushType = "ALWAYS", value=0}
+properties.s2_fb3 = {baseType="NUMBER", pushType = "ALWAYS", value=0}
+properties.s2_fb4 = {baseType="NUMBER", pushType = "ALWAYS", value=0}
+properties.s2_fb5 = {baseType="NUMBER", pushType = "ALWAYS", value=0}
+
+serviceDefinitions.GetSystemProperties(
+    output { baseType="BOOLEAN", description="" },
+    description { "updates properties" }
+)
+
+services.GetSystemProperties = function(me, headers, query, data)
+    queryHardware()
+    return 200, true
+end
+
+function queryHardware()
+    math.randomseed( tonumber(tostring(os.time()):reverse():sub(1,6)) )
+
+    local temp = math.random(10)
+
+    if temp < 6 then
+        properties.failure.value=0
+        properties.s1_fb1.value=161+math.random()
+        properties.s1_fb2.value=180+math.random()
+        properties.s1_fb3.value=190+math.random()
+        properties.s1_fb4.value=176+math.random()
+        properties.s1_fb5.value=193+math.random()
+        properties.s2_fb1.value=130+math.random()
+        properties.s2_fb2.value=200+math.random()
+        properties.s2_fb3.value=195+math.random()
+        properties.s2_fb4.value=165+math.random()
+        properties.s2_fb5.value=190+math.random()
+    else
+        properties.failure.value=1
+        properties.s1_fb1.value=90+math.random()
+        properties.s1_fb2.value=170+math.random()
+        properties.s1_fb3.value=170+math.random()
+        properties.s1_fb4.value=95+math.random()
+        properties.s1_fb5.value=190+math.random()
+        properties.s2_fb1.value=165+math.random()
+        properties.s2_fb2.value=195+math.random()
+        properties.s2_fb3.value=190+math.random()
+        properties.s2_fb4.value=140+math.random()
+        properties.s2_fb5.value=190+math.random()
+    end
+end
+
+tasks.refreshProperties = function(me)
+    queryHardware()
+end
+
+
+- EdgeThing->Services->recordService
+ me.identifier=me.identifier+1;
+
+ me.infoTableProperty.AddRow({
+     identifier:me.identifier,
+     failure:me.failure,
+     s1_fb1:me.s1_fb1,
+     s1_fb2:me.s1_fb2,
+     s1_fb3:me.s1_fb3,
+     s1_fb4:me.s1_fb4,
+     s1_fb5:me.s1_fb5,
+     s2_fb1:me.s2_fb1,
+     s2_fb2:me.s2_fb2,
+     s2_fb3:me.s2_fb3,
+     s2_fb4:me.s2_fb4,
+     s2_fb5:me.s2_fb5
+ });
+
+- EdgeThing->Services->exportCSV
+var sFile = "vibrationCSVfile.csv";
+
+var paramsCSV = {
+    path: sFile,
+    data: me.infoTableProperty,
+    fileRepository: "SimulatorFileRepository",
+    withHeader: true
+};
+
+Resources["CSVParserFunctions"].WriteCSVFile(paramsCSV);
